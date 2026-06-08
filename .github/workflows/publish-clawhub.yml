@@ -2,22 +2,13 @@
 # (https://clawhub.ai/skills) on every push to main, and lets us run a
 # dry-run from the Actions tab before committing breaking changes.
 #
-# Setup (one-time):
-#   1. Create a publish token at https://clawhub.ai → Account settings
-#      → API tokens. Choose an org token if "cabgoapp" is registered as
-#      an organization owner; otherwise use your personal token.
-#   2. Add it as repo secret CLAWHUB_TOKEN.
-#   3. Optional: change the OWNER input below if Cabgo's ClawHub handle
-#      differs from "cabgoapp".
+# Setup (one-time): set repo secret CLAWHUB_TOKEN. Generate the token at
+# https://clawhub.ai → account → API tokens; use an org token if the
+# "cabgoapp" handle is registered as an organization owner there.
 #
-# What ClawHub does on publish:
-#   - Validates the SKILL.md frontmatter (name, version, description,
-#     metadata.openclaw)
-#   - Runs automated security checks on the markdown body + supporting
-#     files
-#   - Stores the release and may hold it back from install surfaces
-#     until human review finishes. We don't block on that here — the
-#     workflow's job is to push the bits.
+# Layout note: this repo is a SINGLE-skill repo (the skill files live in
+# the root, not under skills/<slug>/). We make ClawHub happy by exposing
+# the root as a skill_path; the reusable workflow accepts that shape.
 
 name: Publish skill to ClawHub
 
@@ -44,31 +35,20 @@ permissions:
   id-token: write
 
 jobs:
+  # Reusable workflow calls live at jobs.<id>.uses — NOT inside steps.
+  # Per GitHub Actions rules a job that uses a reusable workflow can't
+  # also declare runs-on / steps; the whole job is the workflow_call.
   publish:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Resolve dry-run flag
-        id: flags
-        env:
-          MODE: ${{ inputs.mode }}
-          EVENT: ${{ github.event_name }}
-        run: |
-          # workflow_dispatch lets the operator opt into a dry-run.
-          # Push events always publish (we already know main is the
-          # source of truth — gating with a dry-run would just stall).
-          if [ "$EVENT" = "workflow_dispatch" ] && [ "$MODE" = "dry-run" ]; then
-            echo "dry_run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "dry_run=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Sync skill to ClawHub
-        uses: openclaw/clawhub/.github/workflows/skill-publish.yml@main
-        with:
-          owner: cabgoapp
-          # The single-skill repo doesn't follow the catalog layout
-          # (skills/<slug>/SKILL.md); the repo root IS the skill folder,
-          # so we sync the whole thing.
-          dry_run: ${{ steps.flags.outputs.dry_run == 'true' }}
-        secrets:
-          clawhub_token: ${{ secrets.CLAWHUB_TOKEN }}
+    uses: openclaw/clawhub/.github/workflows/skill-publish.yml@main
+    with:
+      owner: cabgoapp
+      # The root of this repo IS the skill folder (single-skill repo, no
+      # skills/<slug>/ layout). Point skill_path at "." so the reusable
+      # workflow processes just this one instead of walking a catalog
+      # tree.
+      skill_path: "."
+      # workflow_dispatch + mode=dry-run → preview; push or
+      # mode=publish → live publish.
+      dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'dry-run' }}
+    secrets:
+      clawhub_token: ${{ secrets.CLAWHUB_TOKEN }}
