@@ -1,6 +1,11 @@
 ---
 name: cabgo-mcp-operator
+version: 1.0.0
 description: Use when the user is operating a Cabgo tenant via the Cabgo MCP server (taxi, food delivery, gas distribution, courier — anything served by https://www.cabgo.app/mcp). Loads the conventions, multi-tenant routing rules, safety patterns, and tool-selection heuristics that make MCP calls land cleanly the first time instead of bouncing on tenant_mismatch, schema rejections, or destructive-action confirmations. Trigger on phrases like "create my [delivery / taxi / gas] app", "Cabgo", "Pidelo Express", "what tenants do I have", "create coupon WELCOME10", or any pattern the Cabgo MCP catalog would handle.
+metadata:
+  openclaw:
+    requires:
+      env: []
 ---
 
 # Cabgo MCP — Operator skill
